@@ -1,4 +1,4 @@
-## General purpose library 
+### General purpose library 
 
 
-- Error handling codes
+- Typed error handling
