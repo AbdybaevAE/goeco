@@ -11,14 +11,19 @@ import "github.com/sirupsen/logrus"
 type Operation interface {
 	Request() string
 	Operation() string
-	Log() string
+	Log() *logrus.Entry
 }
+
+const (
+	opKey  = "opId"
+	reqKey = "reqId"
+)
 
 // default implementation
 type operationImpl struct {
 	RequestId   string
 	OperationId string
-	// logger
+	logger      *logrus.Entry
 }
 
 func (o *operationImpl) Request() string {
@@ -27,8 +32,8 @@ func (o *operationImpl) Request() string {
 func (o *operationImpl) Operation() string {
 	return o.OperationId
 }
-func (o *operationImpl) Log() {
-
+func (o *operationImpl) Log() *logrus.Entry {
+	return o.logger
 }
 
 // constructor
@@ -39,12 +44,13 @@ func New(requestId, operationId string) Operation {
 	if len(operationId) == 0 {
 		panic("cannot create operation from empty operationId")
 	}
-	log := logrus.WithFields(logrus.Fields{
-		"asd": "21321",
+	logger := logrus.WithFields(logrus.Fields{
+		reqKey: requestId,
+		opKey:  opKey,
 	})
 	return &operationImpl{
 		RequestId:   requestId,
 		OperationId: operationId,
-		// logger: logger,
+		logger:      logger,
 	}
 }
