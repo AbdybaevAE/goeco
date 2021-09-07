@@ -1,4 +1,4 @@
-package op
+package opctx
 
 import "github.com/sirupsen/logrus"
 
@@ -8,9 +8,9 @@ import "github.com/sirupsen/logrus"
 // each of microservice requests has same operation id.
 // It's very usefull for logging and tracing
 // Operation has logger with operationId and requestId included.
-type Operation interface {
-	Request() string
-	Operation() string
+type Op interface {
+	ReqId() string
+	OpId() string
 	Log() *logrus.Entry
 }
 
@@ -20,24 +20,24 @@ const (
 )
 
 // default implementation
-type operationImpl struct {
+type opImpl struct {
 	RequestId   string
 	OperationId string
 	logger      *logrus.Entry
 }
 
-func (o *operationImpl) Request() string {
+func (o *opImpl) ReqId() string {
 	return o.RequestId
 }
-func (o *operationImpl) Operation() string {
+func (o *opImpl) OpId() string {
 	return o.OperationId
 }
-func (o *operationImpl) Log() *logrus.Entry {
+func (o *opImpl) Log() *logrus.Entry {
 	return o.logger
 }
 
 // constructor
-func New(requestId, operationId string) Operation {
+func New(requestId, operationId string) Op {
 	if len(requestId) == 0 {
 		panic("cannot create operation from empty requestId")
 	}
@@ -48,7 +48,7 @@ func New(requestId, operationId string) Operation {
 		reqKey: requestId,
 		opKey:  opKey,
 	})
-	return &operationImpl{
+	return &opImpl{
 		RequestId:   requestId,
 		OperationId: operationId,
 		logger:      logger,
