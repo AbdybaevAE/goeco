@@ -10,11 +10,17 @@ import (
 )
 
 type RsFactory interface {
+	// Default response with data
 	OkData(rw http.ResponseWriter, data interface{})
+	// Success repsonse status
 	Ok(rw http.ResponseWriter)
+	// Send response from OpRes variable(includes code)
 	Send(rw http.ResponseWriter, opRes *opres.OpRes)
+	// Error response handler
 	Error(rw http.ResponseWriter, err error)
+	// Response from code
 	Code(rw http.ResponseWriter, code opres.Code)
+	// Response from code and message
 	CodeMessage(rw http.ResponseWriter, code opres.Code, message string)
 }
 type rsFactoryImpl struct {
