@@ -31,7 +31,7 @@ type rsFactoryImpl struct {
 
 var rsFactoryInstance RsFactory
 var rsFactoryOnce sync.Once
-var AllRes = opres.GenRes
+var cachedRes = opres.GetCacheRes()
 
 func Get() RsFactory {
 	rsFactoryOnce.Do(func() {
@@ -42,7 +42,7 @@ func Get() RsFactory {
 	return rsFactoryInstance
 }
 func (r *rsFactoryImpl) Send(rw http.ResponseWriter, opRes *opres.Res) {
-	metaData := AllRes.GetMeta(opRes.Code)
+	metaData := cachedRes.GetMeta(opRes.Code)
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(metaData.HttpStatus)
 	json.NewEncoder(rw).Encode(opRes)
@@ -56,17 +56,17 @@ func (r *rsFactoryImpl) Error(rw http.ResponseWriter, err error) {
 		r.Send(rw, opErr)
 	} else {
 		r.logger.Warnf("unhandler error %v", err)
-		r.Send(rw, AllRes.Get(codes.Ok))
+		r.Send(rw, cachedRes.Get(codes.Ok))
 	}
 }
 func (r *rsFactoryImpl) Ok(rw http.ResponseWriter) {
-	r.Send(rw, AllRes.Get(codes.Ok))
+	r.Send(rw, cachedRes.Get(codes.Ok))
 }
 func (r *rsFactoryImpl) OkData(rw http.ResponseWriter, data interface{}) {
 	r.Send(rw, opResFactory.CreateWithData(codes.Ok, msg.OkMsgCode, data))
 }
 func (r *rsFactoryImpl) Code(rw http.ResponseWriter, code codes.Code) {
-	r.Send(rw, AllRes.Get(code))
+	r.Send(rw, cachedRes.Get(code))
 }
 func (r *rsFactoryImpl) CodeMessage(rw http.ResponseWriter, code codes.Code, message string) {
 	opRes := opResFactory.Create(code, message)

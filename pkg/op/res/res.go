@@ -19,22 +19,18 @@ func (o *Res) Error() string {
 	return string(o.Code) + " " + o.Message
 }
 
-type allCodes struct {
-	once    sync.Once
-	mu      sync.Mutex
-	metaMap map[codes.Code]*meta
-	resMap  map[codes.Code]*Res
-}
 type meta struct {
 	HttpStatus int
 }
 
-var GenRes *allCodes
+var cachedCodesInstanceOnce sync.Once
+var cm *cacheCodesImpl
 
-func (cm *allCodes) Init() {
-	cm.once.Do(func() {
-		cm.metaMap = make(map[codes.Code]*meta)
-		cm.resMap = make(map[codes.Code]*Res)
+func GetCacheRes() CachedRes {
+	cachedCodesInstanceOnce.Do(func() {
+		cm = &cacheCodesImpl{}
+		cm.MetaMap = make(map[codes.Code]*meta)
+		cm.ResMap = make(map[codes.Code]*Res)
 		for _, item := range []struct {
 			Code       codes.Code
 			Message    string
@@ -45,43 +41,53 @@ func (cm *allCodes) Init() {
 			{codes.ServiceInternal, msg.GeneralErrorMsgCode, http.StatusInternalServerError},
 			{codes.ServiceUnavailable, msg.GeneralErrorMsgCode, http.StatusServiceUnavailable},
 		} {
-			cm.resMap[item.Code] = &Res{
+			cm.ResMap[item.Code] = &Res{
 				Message: item.Message,
 				Code:    item.Code,
 			}
-			cm.metaMap[item.Code] = &meta{
+			cm.MetaMap[item.Code] = &meta{
 				HttpStatus: item.HttpStatus,
 			}
 		}
 	})
+	return cm
 }
-func (cm *allCodes) Add(code codes.Code, httpStatus int, message string) {
+
+type CachedRes interface {
+	Add(code codes.Code, httpStatus int, message string)
+	Get(code codes.Code) *Res
+	GetMeta(code codes.Code) *meta
+}
+type cacheCodesImpl struct {
+	once    sync.Once
+	mu      sync.Mutex
+	MetaMap map[codes.Code]*meta
+	ResMap  map[codes.Code]*Res
+}
+
+func (cm *cacheCodesImpl) Add(code codes.Code, httpStatus int, message string) {
 	cm.mu.Lock()
-	if _, ok := cm.metaMap[code]; ok {
+	if _, ok := cm.MetaMap[code]; ok {
 		panic("already added given code " + string(code))
 	}
-	cm.resMap[code] = &Res{
+	cm.ResMap[code] = &Res{
 		Message: message,
 		Code:    code,
 	}
-	cm.metaMap[code] = &meta{
+	cm.MetaMap[code] = &meta{
 		HttpStatus: httpStatus,
 	}
 	defer cm.mu.Unlock()
 }
-func (cm *allCodes) Get(code codes.Code) *Res {
-	if val, ok := cm.resMap[code]; !ok {
+func (cm *cacheCodesImpl) Get(code codes.Code) *Res {
+	if val, ok := cm.ResMap[code]; !ok {
 		panic("no code " + string(code) + " found")
 	} else {
 		return val
 	}
 }
-func (cm *allCodes) GetMeta(code codes.Code) *meta {
-	return cm.metaMap[code]
-}
-func init() {
-	GenRes = &allCodes{}
-	GenRes.Init()
+func (cm *cacheCodesImpl) GetMeta(code codes.Code) *meta {
+	return cm.MetaMap[code]
 }
 
 // Default operation result factory(intercept all operation result creations)
